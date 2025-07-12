@@ -1,5 +1,5 @@
 {
-  "name": "my-turborepo",
+  "name": "riverside-clone",
   "private": true,
   "scripts": {
     "build": "turbo run build",
