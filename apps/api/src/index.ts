@@ -2,6 +2,7 @@ import express from "express"
 import { Server } from "socket.io";
 import {createServer} from "node:http";
 import cors from "cors";
+import { create } from "node:domain";
 const app = express();
 app.use(express.json());
 
@@ -17,6 +18,9 @@ const io = new Server(server,{
 
 io.on('connection',(socket)=>{
     console.log("a user connected");
+    socket.on("create-room",(createRoom)=>{
+        console.log(createRoom)
+    })
 })
 
 server.listen(3000,()=>{
