@@ -3,7 +3,7 @@
   "module": "src/index.ts",
   "type": "module",
   "scripts": {
-    "dev" : "bun run src/index.ts"
+    "dev": "bun run src/index.ts"
   },
   "devDependencies": {
     "@types/bun": "latest"
@@ -14,8 +14,10 @@
   "dependencies": {
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",
+    "@types/ws": "^8.18.1",
     "cors": "^2.8.5",
     "express": "^5.1.0",
-    "socket.io": "^4.8.1"
+    "socket.io": "^4.8.1",
+    "ws": "^8.18.3"
   }
 }

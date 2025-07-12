@@ -1,49 +1,32 @@
-import express from "express"
-import { Server } from "socket.io";
-import {createServer} from "node:http";
-import cors from "cors";
-import { create } from "node:domain";
-const app = express();
-app.use(express.json());
+import { WebSocket, WebSocketServer } from "ws";
 
+const wss = new WebSocketServer({ port: 8080 });
 
-const server = createServer(app);
-const io = new Server(server,{
-    cors : {
-         origin: "http://localhost:5173",
-         methods: ["GET", "POST"]
-    }
-});
+let senderSocket : WebSocket | null = null;
+let receiverSocket : WebSocket | null = null;
 
-io.on('connection',(socket)=>{
-    console.log("a user connected");
-    socket.on("create-room", ({ user }) => {
-    socket.join(user.roomId);
-    console.log("user created a room",user.roomId,user)
-    socket.to(user.roomId).emit("create-room", {
-      user
-    });
-  });
-
-  socket.on("join-room", ({  user }) => {
-  
-    console.log("user joined:",user);
-    socket.to(user.roomId).emit("user-joined", { user });
-  });
-
-  socket.on("offer",(data)=>{
-    socket.to(data.roomId).emit("offer",data);
-  })
-
-  socket.on("answer",(data)=>{
-    socket.to(data.roomId).emit("answer",data);
-  })
-
-  socket.on("ice-candidate",(data)=>{
-    socket.to(data.roomId).emit("ice-candidate",data);
-  })
-})
-
-server.listen(3000,()=>{
-    console.log("the server is running at port 3000");
+wss.on("connection",(ws)=>{
+    ws.on('message',(data : any)=>{
+      const message = JSON.parse(data);
+     if(message.type === "identify-as-sender"){
+        console.log("sender set")
+        senderSocket = ws;
+     } else if(message.type === "identify-as-receiver"){
+        console.log("receiver set")
+        receiverSocket = ws;
+     } else if(message.type === "create-offer"){
+        console.log("offer set")
+        receiverSocket?.send(JSON.stringify({type : "offer",sdp : message.sdp}))
+     } else if(message.type === "create-answer"){
+        console.log("answer set")
+        senderSocket?.send(JSON.stringify({type : "answer",sdp : message.sdp}))
+     } else if(message.type === 'iceCandidate'){
+        if(ws === senderSocket){
+            receiverSocket?.send(JSON.stringify({type : "iceCandidate",candidate : message.candidate}))
+        }
+        if(ws === receiverSocket){
+            senderSocket?.send(JSON.stringify({type : "iceCandidate",candidate : message.candidate}))
+        }
+     }
+    })
 })
