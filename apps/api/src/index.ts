@@ -1,6 +1,13 @@
+import express from "express";
 import { WebSocket, WebSocketServer } from "ws";
+import {createServer} from "node:http"
+import { serve } from "bun";
+const app = express();
+app.use(express.json());
 
-const wss = new WebSocketServer({ port: 8080 });
+const server = createServer(app);
+
+const wss = new WebSocketServer({server});
 
 let senderSocket : WebSocket | null = null;
 let receiverSocket : WebSocket | null = null;
@@ -30,3 +37,7 @@ wss.on("connection",(ws)=>{
      }
     })
 })
+
+
+server.listen(3000);
+
