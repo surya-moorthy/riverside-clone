@@ -1,42 +1,41 @@
 import express from "express";
 import { WebSocket, WebSocketServer } from "ws";
 import {createServer} from "node:http"
-import { serve } from "bun";
+import {Server} from "socket.io";
 const app = express();
 app.use(express.json());
 
 const server = createServer(app);
 
-const wss = new WebSocketServer({server});
+const io = new Server(server, {
+  cors: { origin: "*" }
+});
 
-let senderSocket : WebSocket | null = null;
-let receiverSocket : WebSocket | null = null;
+io.on("connection", (socket) => {
+  console.log("a user connected");
 
-wss.on("connection",(ws)=>{
-    ws.on('message',(data : any)=>{
-      const message = JSON.parse(data);
-     if(message.type === "identify-as-sender"){
-        console.log("sender set")
-        senderSocket = ws;
-     } else if(message.type === "identify-as-receiver"){
-        console.log("receiver set")
-        receiverSocket = ws;
-     } else if(message.type === "create-offer"){
-        console.log("offer set")
-        receiverSocket?.send(JSON.stringify({type : "offer",sdp : message.sdp}))
-     } else if(message.type === "create-answer"){
-        console.log("answer set")
-        senderSocket?.send(JSON.stringify({type : "answer",sdp : message.sdp}))
-     } else if(message.type === 'iceCandidate'){
-        if(ws === senderSocket){
-            receiverSocket?.send(JSON.stringify({type : "iceCandidate",candidate : message.candidate}))
-        }
-        if(ws === receiverSocket){
-            senderSocket?.send(JSON.stringify({type : "iceCandidate",candidate : message.candidate}))
-        }
-     }
-    })
-})
+  socket.on("join-room", (roomId) => {
+    socket.join(roomId);
+    socket.to(roomId).emit("user-joined", socket.id);
+  });
+
+  socket.on("offer", (data) => {
+    socket.to(data.roomId).emit("offer", data);
+  });
+
+  socket.on("answer", (data) => {
+    socket.to(data.roomId).emit("answer", data);
+  });
+
+  socket.on("ice-candidate", (data) => {
+    socket.to(data.roomId).emit("ice-candidate", data);
+  });
+
+  socket.on("disconnect", () => {
+    console.log("user disconnected");
+  });
+});
+
 
 
 server.listen(3000);
