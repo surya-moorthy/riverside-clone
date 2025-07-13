@@ -3,7 +3,6 @@ import { Providers } from "./Providers";
 import Home from "./components/Home";
 import CreateRoom from "./components/CreateRoom";
 import JoinRoom from "./components/JoinRoom";
-import Room from "./pages/Room";
 
 
 function App(){
@@ -13,7 +12,6 @@ function App(){
         <Route path="/" element={<Home/>}/>
         <Route path="/createroom" element={<CreateRoom/>}/>
         <Route path="/joinroom" element={<JoinRoom/>}/>
-        <Route path="/room/:id" element={<Room/>}/>
       </Routes>
     </Providers>
   )
