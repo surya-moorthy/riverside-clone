@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import io from "socket.io-client";
+import axios from "axios";
 
-const socket = io("http://localhost:3001");
+const socket = io("http://localhost:3000");
 const config = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
 
 const RoomPage = () => {
@@ -119,15 +120,17 @@ const RoomPage = () => {
         <video ref={localVideo} autoPlay muted style={{ width: 300, border: "1px solid black" }} />
         <video ref={remoteVideo} autoPlay style={{ width: 300, border: "1px solid black" }} />
       </div>
-      <Recordings/>
+      <Recordings roomId={roomId as string}/>
     </div>
   );
 };
 
 
-const Recordings = () => {
+const Recordings = ({roomId } : {roomId : string}) => {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const [recording, setRecording] = useState(false);
+  const [recordedBlob , setRecordedBlob] = useState<Blob | null>(null);
+    const [uploading, setUploading] = useState(false);
   const chunks = useRef<BlobPart[]>([]);
 
   const startRecording = async () => {
@@ -155,13 +158,8 @@ const Recordings = () => {
 
     mediaRecorder.onstop = () => {
       const blob = new Blob(chunks.current, { type: "video/webm" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "recording.webm";
-      a.click();
-
-      chunks.current = []; // reset for next recording
+      setRecordedBlob(blob);
+      // reset for next recording
     };
 
     mediaRecorderRef.current = mediaRecorder;
@@ -169,10 +167,57 @@ const Recordings = () => {
     setRecording(true);
   };
 
-  const stopRecording = () => {
-    mediaRecorderRef.current?.stop();
+ const stopRecording = () => {
+  if (!mediaRecorderRef.current) return;
+
+  mediaRecorderRef.current.onstop = () => {
+    const blob = new Blob(chunks.current, { type: "video/webm" });
+    setRecordedBlob(blob);
+
+    // Stop all tracks
+    mediaRecorderRef.current?.stream.getTracks().forEach(track => track.stop());
+
+    // Cleanup
+    mediaRecorderRef.current = null;
+    chunks.current = [];
     setRecording(false);
   };
+
+  mediaRecorderRef.current.stop();
+};
+
+  const startDownloading = () => {
+     if (!recordedBlob) return;
+     const url = URL.createObjectURL(recordedBlob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "recording.webm";
+      a.click();
+
+      chunks.current = [];
+  }
+
+  const upload = async () => {
+  if (!recordedBlob || !roomId) return;
+
+  const formData = new FormData();
+  formData.append("file", recordedBlob, `${roomId}.webm`);
+  formData.append("filename", roomId);
+  formData.append("filetype", recordedBlob.type);
+
+  try {
+    setUploading(true);
+    const response = await axios.post("http://localhost:3000/upload", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    console.log("Upload successful", response.data);
+  } catch (err) {
+    console.error("Upload failed", err);
+  } finally {
+    setUploading(false);
+  }
+};
+
 
   return (
     <div>
@@ -180,8 +225,18 @@ const Recordings = () => {
         Start Recording
       </button>
       <button onClick={stopRecording} disabled={!recording}  className='text-white bg-neutral-800 hover:bg-purple-700 px-4 py-2 text-lg rounded-2xl m-4'>
-        Stop and Download
+        Stop 
       </button>
+       <button onClick={startDownloading} disabled={!recordedBlob}  className='text-white bg-neutral-800 hover:bg-purple-700 px-4 py-2 text-lg rounded-2xl m-4'>
+           Download
+      </button>
+      <button 
+        onClick={upload} 
+        disabled={!recordedBlob || uploading}  
+        className='text-white bg-neutral-800 hover:bg-purple-700 px-4 py-2 text-lg rounded-2xl m-4'
+      >
+        {uploading ? "Uploading..." : "Upload"}
+</button>
     </div>
   );
 };
