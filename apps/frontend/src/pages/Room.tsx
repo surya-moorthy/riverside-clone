@@ -111,6 +111,7 @@ const RoomPage = () => {
     }
   }, [roomId, streamStarted]);
 
+
   return (
     <div>
       <h2>Room: {roomId}</h2>
@@ -118,6 +119,69 @@ const RoomPage = () => {
         <video ref={localVideo} autoPlay muted style={{ width: 300, border: "1px solid black" }} />
         <video ref={remoteVideo} autoPlay style={{ width: 300, border: "1px solid black" }} />
       </div>
+      <Recordings/>
+    </div>
+  );
+};
+
+
+const Recordings = () => {
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const [recording, setRecording] = useState(false);
+  const chunks = useRef<BlobPart[]>([]);
+
+  const startRecording = async () => {
+    const screenStream = await navigator.mediaDevices.getDisplayMedia({
+      video: true,
+      audio: true,
+    });
+
+    const micStream = await navigator.mediaDevices.getUserMedia({
+      audio: true,
+    });
+
+    const combinedStream = new MediaStream([
+      ...screenStream.getVideoTracks(),
+      ...micStream.getAudioTracks(),
+    ]);
+
+    const mediaRecorder = new MediaRecorder(combinedStream, {
+      mimeType: "video/webm",
+    });
+
+    mediaRecorder.ondataavailable = (e) => {
+      if (e.data.size > 0) chunks.current.push(e.data);
+    };
+
+    mediaRecorder.onstop = () => {
+      const blob = new Blob(chunks.current, { type: "video/webm" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "recording.webm";
+      a.click();
+
+      chunks.current = []; // reset for next recording
+    };
+
+    mediaRecorderRef.current = mediaRecorder;
+    mediaRecorder.start();
+    setRecording(true);
+  };
+
+  const stopRecording = () => {
+    mediaRecorderRef.current?.stop();
+    setRecording(false);
+  };
+
+  return (
+    <div>
+      <button onClick={startRecording} disabled={recording}  className='text-white bg-neutral-800 hover:bg-purple-700 px-4 py-2 text-lg rounded-2xl m-4'>
+        Start Recording
+      </button>
+      <button onClick={stopRecording} disabled={!recording}  className='text-white bg-neutral-800 hover:bg-purple-700 px-4 py-2 text-lg rounded-2xl m-4'>
+        Stop and Download
+      </button>
     </div>
   );
 };
