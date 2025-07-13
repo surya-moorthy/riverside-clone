@@ -8,6 +8,8 @@ export default function JoinRoom() {
         socket.onopen = ()=>{
            socket.send(JSON.stringify({type  : "identify-as-receiver"}))
         }
+       
+        
 
         socket.onmessage = async (event) =>{
             const message = JSON.parse(event.data);
